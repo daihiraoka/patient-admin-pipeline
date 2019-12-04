@@ -1,0 +1,94 @@
+apiVersion: v1
+kind: Template
+labels:
+  template: patient-admin-pipeline-template
+message: |-
+  patient-admin Pipeline sample 
+metadata:
+  name: patient-admin-pipeline
+parameters:
+objects:
+- apiVersion: v1
+  kind: BuildConfig
+  metadata:
+    name: patient-admin-pipeline
+  spec:
+    strategy:
+      jenkinsPipelineStrategy:
+        jenkinsfile: |-
+          pipeline {
+            agent { label "nodejs" }
+            environment {
+              version = "2.0"
+              devTag = "${version}-${BUILD_NUMBER}"
+            }
+            stages {
+              stage("Build Image") {
+                steps {
+                  script {
+                    openshift.withCluster() {
+                       openshift.withProject() {
+                          def bld = openshift.startBuild('patient-admin')
+                          bld.untilEach {
+                            return it.object().status.phase == "Complete"
+                          }
+                          bld.logs('-f')
+                       }
+                    }
+                  }
+                }
+              }
+              stage("Deploy Image") {
+                steps {
+                  script {
+                    openshift.withCluster() {
+                      openshift.withProject() {
+                        def dc = openshift.selector('dc', 'patient-admin')
+                        dc.rollout().latest()
+                      }
+                    }
+                  }
+                }
+              }
+              stage("Tagging Image Development latest to devTag") {
+                steps {
+                  script {
+                    openshift.withCluster() {
+                      openshift.withProject() {
+                        // Tag the patient-admin:latest image as patient-admin:${devTag}
+                        openshift.tag("patient-admin:latest", "patient-admin:${devTag}")
+                      }
+                    }
+                  }
+                }
+              }
+              stage("Promote Image Development to Testing") {
+                steps {
+                  script {
+                    openshift.withCluster() {
+                      openshift.withProject() {
+                        // Tag the patient-admin:${devTag} image as health-testing/patient-admin:${devTag}
+                        openshift.tag("patient-admin:${devTag}", "health-testing/patient-admin:${devTag}")
+                        openshift.tag("health-testing/patient-admin:${devTag}", "health-testing/patient-admin:latest")
+                      }
+                    }
+                  }
+                }
+              }
+              stage("Promote Image Testing to Production") {
+                steps {
+                  script {
+                    openshift.withCluster() {
+                      openshift.withProject('health-testing') {
+                        // Tag the patient-admin:${devTag} image as health-testing/patient-admin:${devTag}
+                        openshift.tag("patient-admin:${devTag}", "health-production/patient-admin:${devTag}")
+                        openshift.tag("health-production/patient-admin:${devTag}", "health-production/patient-admin:latest")
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+      type: JenkinsPipeline
+    triggers: []
