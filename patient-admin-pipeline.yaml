@@ -27,7 +27,7 @@ objects:
                 steps {
                   script {
                     openshift.withCluster() {
-                       openshift.withProject() {
+                       openshift.withProject('health') {
                           def bld = openshift.startBuild('patient-admin')
                           bld.untilEach {
                             return it.object().status.phase == "Complete"
@@ -42,7 +42,7 @@ objects:
                 steps {
                   script {
                     openshift.withCluster() {
-                      openshift.withProject() {
+                      openshift.withProject('health') {
                         def dc = openshift.selector('dc', 'patient-admin')
                         dc.rollout().latest()
                       }
@@ -54,7 +54,7 @@ objects:
                 steps {
                   script {
                     openshift.withCluster() {
-                      openshift.withProject() {
+                      openshift.withProject('health') {
                         // Tag the patient-admin:latest image as patient-admin:${devTag}
                         openshift.tag("patient-admin:latest", "patient-admin:${devTag}")
                       }
@@ -66,7 +66,7 @@ objects:
                 steps {
                   script {
                     openshift.withCluster() {
-                      openshift.withProject() {
+                      openshift.withProject('health') {
                         // Tag the patient-admin:${devTag} image as health-testing/patient-admin:${devTag}
                         openshift.tag("patient-admin:${devTag}", "health-testing/patient-admin:${devTag}")
                         openshift.tag("health-testing/patient-admin:${devTag}", "health-testing/patient-admin:latest")
