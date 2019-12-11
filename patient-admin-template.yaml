@@ -1,0 +1,64 @@
+apiVersion: v1
+kind: Template
+labels:
+  template: patient-admin-template
+message: |-
+  patient-admin sample 
+metadata:
+  name: patient-admin
+parameters:
+objects:
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    name: patient-admin
+  spec:
+    template:
+      metadata:
+        labels:
+          name: patient-admin
+      spec:
+        containers:
+        - name: patient-admin
+          image: patient-admin:latest
+          ports:
+          - containerPort: 8080
+            protocol: TCP
+    replicas: 3
+    selector:
+      name: patient-admin
+    triggers:
+    - type: ConfigChange
+    - type: ImageChange
+      imageChangeParams:
+        automatic: true
+        containerNames:
+        - patient-admin
+        from:
+          kind: ImageStreamTag
+          name: patient-admin:latest
+- apiVersion: v1
+  kind: ImageStream
+  metadata:
+    name: patient-admin
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: patient-admin
+  spec:
+    ports:
+    - name: 8080-tcp
+      port: 8080
+      targetPort: 8080
+    selector:
+      name: patient-admin
+- apiVersion: v1
+  kind: Route
+  metadata:
+    name: patient-admin
+  spec:
+    host: 
+    to:
+      kind: Service
+      name: patient-admin
+
